@@ -42,6 +42,10 @@ y_t = c(y_start)
 w_t = c(w_start)
 t = c(0)
 
+#In order for population to reach an equilibrium, we must have αm ≤ βE ≤ βC ≤ αM
+eta_value = (alpha_max - BETA_Comm) / (alpha_max - alpha_min)
+max_capacity = GAMMA_REGROW / (eta_value * SUBSIST) * (lambda_MAX_FOREST / 2)^2
+
 ### MODEL LOOP
 for (i in 1:max_time){
   # calculate some dependent values
@@ -92,7 +96,8 @@ pop_counts = data.frame(time=t, commoners=X_Comm_t, elites=X_Elite_t, nature=y_t
 g1 = ggplot(pop_counts, aes(x=time, y=commoners)) +
   scale_x_continuous(expand=c(0,0)) +
   geom_line(linewidth = 3, colour="#0c81e0ff") + 
-  geom_line(aes(y=elites), linewidth = 3, colour="#7e0ce0ff")
+  geom_line(aes(y=elites), linewidth = 3, colour="#7e0ce0ff") +
+  geom_hline(yintercept = max_capacity, color="#991d00", size=0.5, alpha=0.5, linetype="dashed")
 g2 = ggplot(pop_counts, aes(x=time, y=nature)) +
   scale_x_continuous(expand=c(0,0)) +
   geom_line(linewidth = 3, colour="#2e831eff") + 
