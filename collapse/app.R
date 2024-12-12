@@ -3,6 +3,7 @@
 # Motesharrei et al (2012) A Minimal Model for Human and Nature Interaction
 # https://www.sciencedirect.com/science/article/pii/S0921800914000615
 #
+# last modified 2024-12-12 for deployment to shinyapps.io
 
 library(shiny)
 library(ggplot2)
@@ -13,7 +14,7 @@ APP_VERSION = "v1.0"
 
 # begin app interface
 ui <- fluidPage(
-  titlePanel(paste("Human And Nature DYnamics",APP_VERSION), 
+  titlePanel(h1(paste("Human And Nature DYnamics (HANDY)",APP_VERSION),style="font-weight:bold; color:#7e0ce0ff"), 
              windowTitle = paste("Human And Nature DYnamics",APP_VERSION)),
   fluidRow(
     column(3,
@@ -63,15 +64,44 @@ ui <- fluidPage(
            plotOutput(outputId = "twopartPlot",
                       width="100%", height="600px",
                       click = "plot_click",
-                      brush = brushOpts(id = "plot_brush")
+                      brush = brushOpts(id = "plot_brush", direction="x")
+           ),
+           column(5,
+           span(textOutput(outputId = "finalCcount", ), style="font-size:14pt ; color:#0c81e0"),
+           span(textOutput(outputId = "finalEcount", ), style="font-size:14pt ; color:#7e0ce0")
+           ),
+           column(5,
+           span(textOutput(outputId = "finalNcount", ), style="font-size:14pt ; color:#2e831e"),
+           span(textOutput(outputId = "finalWcount", ), style="font-size:14pt ; color:#e08e0c")
            )
     ) # end column
   ),
   fluidRow(
-    column(4,
-           verbatimTextOutput("debugText"),
-    ),
-    tableOutput("selectedPoints")
+    column(6,
+          # verbatimTextOutput("debugText"),
+          div( style ="margin:20px",
+               h1("About this app:", style="color:#7e0ce0ff"),
+               p("This is an interactive app based on the proposed model of societal collapse by "),
+               br(), br(),
+               p("Safa Motesharrei, Jorge Rivas, and Eugenia Kalnay (2012) A Minimal Model for Human and Nature Interaction"),
+               br(),
+               a("https://www.sciencedirect.com/science/article/pii/S0921800914000615", 
+                 href="https://www.sciencedirect.com/science/article/pii/S0921800914000615"),
+               br(), br(),
+               p("The model uses 4 equations to show a balance between population growth, production of wealth, 
+        and the depletion and regeneration of nature. The authors had demonstrated several conditions 
+        where equilibrium can be reached, and several that result in permanent collapse."),
+               br(),
+               p("For example, try setting 'depletion' ('d') to 2.75, and observe the cycles of regeneration until eventually reaching equilibrium."),
+               br(), br(),
+               p("Source code for this app can be found here:"),
+               a("https://github.com/wrf/society-collapse", 
+                 href="https://github.com/wrf/society-collapse"),
+               br(), br(),
+               p("App created by WRF, last modified by WRF 2024-12-12"),
+               br()
+          )
+    )
   ) # end row
 ) # end fluidPage
 
@@ -83,9 +113,21 @@ server <- function(input, output) {
     paste(d,sep="\n")
   })
   
+  output$finalCcount <- renderText({ 
+    popcounts = runModel()
+    paste( "Commoners:", round(popcounts$commoners[nrow(popcounts)] ) ) })
+  output$finalEcount <- renderText({ 
+    popcounts = runModel()
+    paste( "Elites:", round(popcounts$elites[nrow(popcounts)] ) ) })
+  output$finalNcount <- renderText({ 
+    popcounts = runModel()
+    paste( "Nature:", round(popcounts$nature[nrow(popcounts)] ) ) })
+  output$finalWcount <- renderText({ 
+    popcounts = runModel()
+    paste( "Wealth:", round(popcounts$wealth[nrow(popcounts)] ) ) })
+  
+  # main model, rerun here each time parameters are changed
   runModel <- reactive({
-    
-    
     alpha_min = 0.01 # default 0.01
     alpha_max = input$deathrateM     # default 0.07
     
@@ -106,6 +148,10 @@ server <- function(input, output) {
     w_start = 0
     
     max_time = input$totalTime       # default 1000
+    
+    ### equilibrium measures
+    eta_value = (alpha_max - BETA_Comm) / (alpha_max - alpha_min)
+    max_capacity = GAMMA_REGROW / (eta_value * SUBSIST) * (lambda_MAX_FOREST / 2)^2
     
     ### TRACKERS AND STARTING CONDITIONS
     X_Comm_t = c(X_Comm_start)
@@ -138,9 +184,14 @@ server <- function(input, output) {
       X_Elite_t = c(X_Elite_t, max(X_Elite_new,0))
       y_t = c(y_t, max(y_new,0))
       w_t = c(w_t, max(w_new,0))
-    }
-    # put into data frame, and plot as 2x1
+    } # end for loop
     pop_counts = data.frame(time=t, commoners=X_Comm_t, elites=X_Elite_t, nature=y_t, wealth=w_t)
+    pop_counts
+  })
+    
+    plotModel <- reactive({
+      pop_counts = runModel()
+    # put into data frame, and plot as 2x1
     g1 = ggplot(pop_counts, aes(x=time, y=commoners)) +
       theme(axis.text=element_text(size=16),
             axis.title=element_text(size=18),
@@ -148,7 +199,7 @@ server <- function(input, output) {
       scale_x_continuous(expand=c(0,0)) +
       geom_line(linewidth = 3, colour="#0c81e0ff") + 
       geom_line(aes(y=elites), linewidth = 3, colour="#7e0ce0ff") +
-      labs(x="Time (years)", y="Population")
+      labs(x="Time (years)", y="Population") 
     g2 = ggplot(pop_counts, aes(x=time, y=nature)) +
       theme(axis.text=element_text(size=16),
             axis.title=element_text(size=18),
@@ -162,7 +213,7 @@ server <- function(input, output) {
   })
   
   output$twopartPlot <- renderPlot({
-    runModel()
+    plotModel()
   })
   
   output$printpdf <- downloadHandler(
@@ -170,7 +221,7 @@ server <- function(input, output) {
     filename = function() {paste("xC",input$commoners,"xE",input$elites,
                                  "d",input$depletionMulti,"k",input$kSalary,"plot.pdf", sep="_")},
     content = function(filename){
-      gg = runModel()
+      gg = plotModel()
       ggsave(filename, gg, device="pdf", width=8, height=6, 
              title=paste0("xC=",input$commoners,"; xE=",input$elites,"; d=",input$depletionMulti,"; k=",input$kSalary ) 
              )

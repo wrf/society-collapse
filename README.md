@@ -3,6 +3,8 @@ Interactive app of a model of society collapse. This is based on the model of [M
 
 With some settings, equilibrium can be achieved. In others, there are several modes of cycles of collapse, or complete collapse, depending on the extent of consumption or whether nature recovers when humanity dies or not.
 
+The app is [live on ShinyApps.io](https://wrfbiolum.shinyapps.io/collapse-v1/).
+
 ![screenshot of app](https://github.com/wrf/society-collapse/blob/main/images/collapse_app_screenshot_v1.png)
 
 As the authors had noted, several aspects are rather simplified: 
